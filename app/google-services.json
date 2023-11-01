@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "322270049235",
+    "project_id": "marsphotos-4c7e1",
+    "storage_bucket": "marsphotos-4c7e1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:322270049235:android:6ace82223b281621a6f526",
+        "android_client_info": {
+          "package_name": "com.example.marsphotos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwy3tQhUowxmCSp79D4esLuD1ND-pNjOk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

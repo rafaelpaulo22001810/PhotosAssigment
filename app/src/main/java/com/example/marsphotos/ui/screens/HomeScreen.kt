@@ -20,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,20 +50,25 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.marsphotos.MainActivity
 import com.example.marsphotos.R
 import com.example.marsphotos.model.MarsPhoto
 import com.example.marsphotos.model.PicsumPhoto
 import com.example.marsphotos.ui.theme.MarsPhotosTheme
+import com.google.firebase.database.FirebaseDatabase
 
 @Composable
 fun HomeScreen(
-    marsUiState: MarsUiState, picsumUiState: PicsumUiState, modifier: Modifier = Modifier
+    db: FirebaseDatabase,
+    marsUiState: MarsUiState,
+    picsumUiState: PicsumUiState,
+    modifier: Modifier = Modifier
 ) {
 
-    Column (
+    Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-    ){
-        when(picsumUiState) {
+    ) {
+        when (picsumUiState) {
             is PicsumUiState.Loading -> LoadingScreen(modifier = modifier.fillMaxSize())
             is PicsumUiState.Success -> ResultScreenPicsum(
                 picsumUiState.photos, picsumUiState.randomPhoto, modifier = modifier.fillMaxWidth()
@@ -80,17 +86,44 @@ fun HomeScreen(
             is MarsUiState.Error -> ErrorScreen(modifier = modifier.fillMaxSize())
         }
         Button(
-            modifier = Modifier.padding(16.dp).size(100.dp, 50.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .size(100.dp, 50.dp),
             colors = ButtonDefaults.buttonColors(Color.Red),
             onClick = {
-            if (marsUiState is MarsUiState.Success) {
-                marsUiState.refresh()
-            }
-            if (picsumUiState is PicsumUiState.Success) {
-                picsumUiState.refresh()
-            }
-        }) {
+                if (marsUiState is MarsUiState.Success) {
+                    marsUiState.refresh()
+                }
+                if (picsumUiState is PicsumUiState.Success) {
+                    picsumUiState.refresh()
+                }
+            }) {
             Text(text = stringResource(R.string.roll))
+        }
+        Row(verticalAlignment = Alignment.Bottom) {
+            Button(modifier = Modifier
+                .padding(16.dp)
+                .size(100.dp, 50.dp),
+                colors = ButtonDefaults.buttonColors(Color.Blue),
+                onClick = {
+                    if (marsUiState is MarsUiState.Success) {
+                        val mars = db.getReference(MainActivity.MARS_CHILD)
+                        mars.child(marsUiState.randomPhoto.id).setValue(marsUiState.randomPhoto.imgSrc)
+                    }
+                    if (picsumUiState is PicsumUiState.Success) {
+                        val picsum = db.getReference(MainActivity.PICSUM_CHILD)
+                        picsum.child(picsumUiState.randomPhoto.id).setValue(picsumUiState.randomPhoto.download_url)
+                    }
+                }) {
+                Text(text = stringResource(R.string.save))
+            }
+            Button(modifier = Modifier
+                .padding(16.dp)
+                .size(100.dp, 50.dp),
+                colors = ButtonDefaults.buttonColors(Color.Blue),
+                onClick = { /*TODO*/ }) {
+                Text(text = stringResource(R.string.load))
+            }
         }
     }
 }
@@ -101,7 +134,7 @@ fun HomeScreen(
 @Composable
 fun LoadingScreen(modifier: Modifier = Modifier) {
     Image(
-        modifier = modifier.size(200.dp),
+        modifier = modifier.size(250.dp),
         painter = painterResource(R.drawable.loading_img),
         contentDescription = stringResource(R.string.loading)
     )
@@ -130,11 +163,13 @@ fun ErrorScreen(modifier: Modifier = Modifier) {
 @Composable
 fun ResultScreenPicsum(photos: String, randomPhoto: PicsumPhoto, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(text = photos)
         AsyncImage(
-            modifier= Modifier.height(250.dp),
+            modifier = Modifier
+                .height(250.dp)
+                .fillMaxWidth(),
             model = ImageRequest.Builder(LocalContext.current)
                 .data(randomPhoto.download_url)
                 .crossfade(true)
@@ -147,11 +182,13 @@ fun ResultScreenPicsum(photos: String, randomPhoto: PicsumPhoto, modifier: Modif
 @Composable
 fun ResultScreen(photos: String, randomPhoto: MarsPhoto, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(text = photos)
         AsyncImage(
-            modifier= Modifier.height(250.dp),
+            modifier = Modifier
+                .height(200.dp)
+                .fillMaxWidth(),
             model = ImageRequest.Builder(LocalContext.current)
                 .data(randomPhoto.imgSrc)
                 .crossfade(true)

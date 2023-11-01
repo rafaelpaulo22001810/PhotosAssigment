@@ -37,9 +37,10 @@ import com.example.marsphotos.R
 import com.example.marsphotos.ui.screens.HomeScreen
 import com.example.marsphotos.ui.screens.MarsViewModel
 import com.example.marsphotos.ui.screens.PicsumViewModel
+import com.google.firebase.database.FirebaseDatabase
 
 @Composable
-fun MarsPhotosApp() {
+fun MarsPhotosApp(db: FirebaseDatabase) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -52,7 +53,7 @@ fun MarsPhotosApp() {
         ) {
             val marsViewModel: MarsViewModel = viewModel()
             val picsumViewModel: PicsumViewModel = viewModel()
-            HomeScreen(marsUiState = marsViewModel.marsUiState, picsumUiState = picsumViewModel.picsumUiState)
+            HomeScreen(db= db,marsUiState = marsViewModel.marsUiState, picsumUiState = picsumViewModel.picsumUiState)
         }
     }
 }

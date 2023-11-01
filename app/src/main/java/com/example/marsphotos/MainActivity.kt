@@ -26,11 +26,18 @@ import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import com.example.marsphotos.ui.MarsPhotosApp
 import com.example.marsphotos.ui.theme.MarsPhotosTheme
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ktx.database
+import com.google.firebase.ktx.Firebase
 
 class MainActivity : ComponentActivity() {
+    private lateinit var db: FirebaseDatabase
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        db = Firebase.database
+
         setContent {
             MarsPhotosTheme {
                 // A surface container using the 'background' color from the theme
@@ -38,9 +45,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MarsPhotosApp()
+                    MarsPhotosApp(db)
                 }
             }
         }
+    }
+
+    companion object{
+        const val MARS_CHILD = "mars"
+        const val PICSUM_CHILD = "picsum"
     }
 }
