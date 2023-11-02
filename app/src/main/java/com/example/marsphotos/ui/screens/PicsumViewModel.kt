@@ -26,11 +26,12 @@ class PicsumViewModel : ViewModel() {
         getPicsumPhotos()
     }
 
+    var listResult: List<PicsumPhoto> = emptyList()
     fun getPicsumPhotos() {
         viewModelScope.launch {
             picsumUiState = PicsumUiState.Loading
             picsumUiState = try {
-                val listResult = PicsumApi.retrofitService.getPhotos()
+                listResult = PicsumApi.retrofitService.getPhotos()
                 PicsumUiState.Success(
                     "Success: ${listResult.size} Picsum photos retrieved",
                     listResult.random(), ::refresh
@@ -44,7 +45,10 @@ class PicsumViewModel : ViewModel() {
     }
 
     fun refresh() {
-        getPicsumPhotos()
+        picsumUiState = PicsumUiState.Success(
+            "Success: ${listResult.size} Picsum photos retrieved",
+            listResult.random(), ::refresh
+        )
     }
 }
 

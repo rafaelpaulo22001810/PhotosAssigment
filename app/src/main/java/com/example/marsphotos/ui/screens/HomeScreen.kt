@@ -15,6 +15,8 @@
  */
 package com.example.marsphotos.ui.screens
 
+import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +57,11 @@ import com.example.marsphotos.R
 import com.example.marsphotos.model.MarsPhoto
 import com.example.marsphotos.model.PicsumPhoto
 import com.example.marsphotos.ui.theme.MarsPhotosTheme
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.GenericTypeIndicator
+import com.google.firebase.database.ValueEventListener
 
 @Composable
 fun HomeScreen(
@@ -64,24 +70,55 @@ fun HomeScreen(
     picsumUiState: PicsumUiState,
     modifier: Modifier = Modifier
 ) {
+    var marsPhoto by remember { mutableStateOf(MarsPhoto()) }
+    var picsumPhoto by remember { mutableStateOf(PicsumPhoto()) }
+    var rollCount by remember { mutableStateOf(0) }
+
+    val rollRef = db.reference.child("roll")
+    rollRef.get().addOnSuccessListener { dataSnapshot ->
+        val rollValue = dataSnapshot.value
+        if (rollValue != null) {
+            if (rollValue is Long) {
+                rollCount = rollValue.toInt()
+            } else if (rollValue is Int) {
+                rollCount = rollValue
+            } else {
+                println("O valor de 'roll' não é do tipo esperado (Long ou Int).")
+            }
+        } else {
+            println("A chave 'roll' não existe no banco de dados.")
+        }
+    }.addOnFailureListener { exception ->
+        println("Erro ao buscar o valor de 'roll': $exception")
+    }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         when (picsumUiState) {
             is PicsumUiState.Loading -> LoadingScreen(modifier = modifier.fillMaxSize())
-            is PicsumUiState.Success -> ResultScreenPicsum(
-                picsumUiState.photos, picsumUiState.randomPhoto, modifier = modifier.fillMaxWidth()
-            )
+            is PicsumUiState.Success -> {
+                if (picsumPhoto.id == ""){
+                    picsumPhoto = picsumUiState.randomPhoto
+                }
+                ResultScreenPicsum(
+                    picsumUiState.photos, picsumPhoto, modifier = modifier.fillMaxWidth()
+                )
+            }
 
             is PicsumUiState.Error -> ErrorScreen(modifier = modifier.fillMaxSize())
         }
         Spacer(modifier = Modifier.height(32.dp))
         when (marsUiState) {
             is MarsUiState.Loading -> LoadingScreen(modifier = modifier.fillMaxSize())
-            is MarsUiState.Success -> ResultScreen(
-                marsUiState.photos, marsUiState.randomPhoto, modifier = modifier.fillMaxWidth()
-            )
+            is MarsUiState.Success -> {
+                if (marsPhoto.id == ""){
+                    marsPhoto = marsUiState.randomPhoto
+                }
+                ResultScreen(
+                    marsUiState.photos, marsPhoto, modifier = modifier.fillMaxWidth()
+                )
+            }
 
             is MarsUiState.Error -> ErrorScreen(modifier = modifier.fillMaxSize())
         }
@@ -92,14 +129,20 @@ fun HomeScreen(
             colors = ButtonDefaults.buttonColors(Color.Red),
             onClick = {
                 if (marsUiState is MarsUiState.Success) {
+                    marsPhoto = MarsPhoto()
                     marsUiState.refresh()
                 }
                 if (picsumUiState is PicsumUiState.Success) {
+                    picsumPhoto = PicsumPhoto()
                     picsumUiState.refresh()
                 }
+                val rollRef = db.reference.child("roll")
+                rollRef.setValue(rollCount + 1)
+
             }) {
             Text(text = stringResource(R.string.roll))
         }
+        Text(text = "Roll: $rollCount")
         Row(verticalAlignment = Alignment.Bottom) {
             Button(modifier = Modifier
                 .padding(16.dp)
@@ -108,11 +151,18 @@ fun HomeScreen(
                 onClick = {
                     if (marsUiState is MarsUiState.Success) {
                         val mars = db.getReference(MainActivity.MARS_CHILD)
-                        mars.child(marsUiState.randomPhoto.id).setValue(marsUiState.randomPhoto.imgSrc)
+                        mars.child(marsUiState.randomPhoto.id).setValue(marsUiState.randomPhoto)
+
+                        val lastAdd = db.reference.child("lastAdd")
+                        lastAdd.child("mars").setValue(marsUiState.randomPhoto.id)
                     }
                     if (picsumUiState is PicsumUiState.Success) {
                         val picsum = db.getReference(MainActivity.PICSUM_CHILD)
-                        picsum.child(picsumUiState.randomPhoto.id).setValue(picsumUiState.randomPhoto.download_url)
+                        picsum.child(picsumUiState.randomPhoto.id)
+                            .setValue(picsumUiState.randomPhoto)
+
+                        val lastAdd = db.reference.child("lastAdd")
+                        lastAdd.child("picsum").setValue(picsumUiState.randomPhoto.id)
                     }
                 }) {
                 Text(text = stringResource(R.string.save))
@@ -121,7 +171,55 @@ fun HomeScreen(
                 .padding(16.dp)
                 .size(100.dp, 50.dp),
                 colors = ButtonDefaults.buttonColors(Color.Blue),
-                onClick = { /*TODO*/ }) {
+                onClick = {
+                    val lastAdd = db.reference.child("lastAdd")
+                    lastAdd.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            val lastAddData = snapshot.getValue(object : GenericTypeIndicator<Map<String, String>>() {})
+
+                            if (lastAddData != null){
+                                val mars = lastAddData["mars"]
+                                val picsum = lastAddData["picsum"]
+
+                                if (mars != null){
+                                    val marsReference = db.getReference(MainActivity.MARS_CHILD).child(mars)
+                                    marsReference.addListenerForSingleValueEvent(object : ValueEventListener {
+                                        override fun onDataChange(snapshot: DataSnapshot) {
+                                            val marsData = snapshot.getValue(MarsPhoto::class.java)
+                                            if (marsData != null){
+                                                marsPhoto = marsData
+                                            }
+                                        }
+
+                                        override fun onCancelled(error: DatabaseError) {
+                                            Log.w("TAG", "Failed to read value.", error.toException())
+                                        }
+                                    })
+                                }
+
+                                if (picsum != null){
+                                    val picsumReference = db.getReference(MainActivity.PICSUM_CHILD).child(picsum)
+                                    picsumReference.addListenerForSingleValueEvent(object : ValueEventListener {
+                                        override fun onDataChange(snapshot: DataSnapshot) {
+                                            val picsumData = snapshot.getValue(PicsumPhoto::class.java)
+                                            if (picsumData != null){
+                                                picsumPhoto = picsumData
+                                            }
+                                        }
+
+                                        override fun onCancelled(error: DatabaseError) {
+                                            Log.w("TAG", "Failed to read value.", error.toException())
+                                        }
+                                    })
+                                }
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.w("TAG", "Failed to read value.", error.toException())
+                        }
+                    })
+                }) {
                 Text(text = stringResource(R.string.load))
             }
         }
@@ -197,6 +295,7 @@ fun ResultScreen(photos: String, randomPhoto: MarsPhoto, modifier: Modifier = Mo
         )
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
