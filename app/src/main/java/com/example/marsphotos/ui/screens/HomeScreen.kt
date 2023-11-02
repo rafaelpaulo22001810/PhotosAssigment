@@ -136,7 +136,7 @@ fun HomeScreen(
                     picsumPhoto = PicsumPhoto()
                     picsumUiState.refresh()
                 }
-                val rollRef = db.reference.child("roll")
+
                 rollRef.setValue(rollCount + 1)
 
             }) {
